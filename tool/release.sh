@@ -1,3 +1,6 @@
+#!/bin/bash
+set -e
+
 pause() {
     while true; do
         read -p "$1 " yn
@@ -14,10 +17,15 @@ pause() {
 cd `dirname $0`/..
 SOURCE=`pwd`
 
+git checkout refs/remotes/origin/master -- package.json
+
 CUR_VERSION=`node -e 'console.log(require("./package.json").version)'`
 git --no-pager log --first-parent --oneline v$CUR_VERSION..master
 echo "current version is $CUR_VERSION"
-read -p "enter version number for the build " VERSION_NUM
+VERSION_NUM=;
+until [[ "$VERSION_NUM" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ; do
+    read -p "enter version number for the build " VERSION_NUM
+done
 
 node -e "
     var fs = require('fs');
@@ -34,7 +42,7 @@ node -e "
     }
     update('package.json');
     update('build/package.json');
-    update('./lib/ace/ext/menu_tools/generate_settings_menu.js');
+    update('./lib/ace/ace.js');
     update('ChangeLog.txt', function(str) {
         var date='"`date +%Y.%m.%d`"';
         return date + ' Version ' + version + '\n' + str.replace(/^\d+.*/, '').replace(/^\n/, '');
@@ -64,6 +72,7 @@ echo "build repository updated"
 pause "continue update ace repo? [y/n]"
 cd ..
 
+git commit -a -m "release v$VERSION_NUM"
 
 echo "new commit added"
 pause "continue creating the tag for v$VERSION_NUM [y/n]"
